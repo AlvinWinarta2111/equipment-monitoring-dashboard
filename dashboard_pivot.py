@@ -175,7 +175,7 @@ def main():
             selected_equip_name = selected_equipment_rows[0].get('EQUIPMENT DESCRIPTION')
             
             st.markdown(f"#### Details for: **{selected_equip_name}**")
-            selected_equip__full_details = detail_df[detail_df['EQUIPMENT DESCRIPTION'] == selected_equip_name].iloc[0]
+            selected_equip_full_details = detail_df[detail_df['EQUIPMENT DESCRIPTION'] == selected_equip_name].iloc[0]
             action_data = [{"EQUIPMENT DESCRIPTION": selected_equip_full_details.get("EQUIPMENT DESCRIPTION"), "REPORTED BY": selected_equip_full_details.get("REPORTED BY"), "FINDING": selected_equip_full_details.get("FINDING"), "ACTION PLAN": selected_equip_full_details.get("ACTION PLAN"), "PART NEEDED": selected_equip_full_details.get("PART NEEDED")}]
             action_detail_df = pd.DataFrame(action_data)
             gb_action = GridOptionsBuilder.from_dataframe(action_detail_df)
