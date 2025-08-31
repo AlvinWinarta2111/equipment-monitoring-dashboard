@@ -4,4 +4,4 @@ openpyxl
 plotly
 streamlit-aggrid
 requests
-plotly_events
+streamlit-plotly-events
