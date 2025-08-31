@@ -174,7 +174,6 @@ def main():
         detail_df = detail_df.sort_values(by="DATE", ascending=False).drop_duplicates(subset=["EQUIPMENT DESCRIPTION"], keep="first")
         detail_df["STATUS"] = detail_df["SCORE"].apply(map_status)
         
-        # *** UPDATED: Define columns for the second-level grid with components ***
         detail_display_cols = [
             "EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS",
             "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"
@@ -192,7 +191,6 @@ def main():
             height=300, theme="streamlit", allow_unsafe_jscode=True
         )
 
-        # --- UPDATED: Third-level drilldown with details table ---
         selected_equipment_rows = detail_grid_response.get("selected_rows", [])
         if isinstance(selected_equipment_rows, pd.DataFrame):
             selected_equipment_rows = selected_equipment_rows.to_dict("records")
@@ -203,7 +201,6 @@ def main():
 
             st.markdown(f"#### Details for: **{selected_equip_name}**")
 
-            # Create a single-row DataFrame for the details
             action_data = [{
                 "EQUIPMENT DESCRIPTION": selected_equip_full_details.get("EQUIPMENT DESCRIPTION", "N/A"),
                 "REPORTED BY": selected_equip_full_details.get("REPORTED BY", "N/A"),
@@ -213,7 +210,6 @@ def main():
             }]
             action_detail_df = pd.DataFrame(action_data)
 
-            # Build the AgGrid for the details
             gb_action_details = GridOptionsBuilder.from_dataframe(action_detail_df)
             gb_action_details.configure_default_column(resizable=False, suppressMovable=True, wrapText=True, autoHeight=True)
             gridOptions_action_details = gb_action_details.build()
@@ -222,26 +218,29 @@ def main():
                 action_detail_df,
                 gridOptions=gridOptions_action_details,
                 fit_columns_on_grid_load=True,
-                height=150, # Adjusted height for a single row of wrapped text
+                height=150,
                 theme="streamlit"
             )
 
-        # --- Performance Trend ---
-        st.subheader(f"Performance Trend for {selected_system}")
-        trend_df = df_filtered_by_date.groupby(['DATE', 'SYSTEM'])['SCORE'].min().reset_index()
-        trend_df_filtered = trend_df[trend_df["SYSTEM"] == selected_system]
-        if not trend_df_filtered.empty:
-            fig_trend = px.line(
-                trend_df_filtered, x="DATE", y="SCORE", markers=True,
-                title=f"Performance Trend for {selected_system}"
-            )
-            fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
-            fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
-            st.plotly_chart(fig_trend, use_container_width=True)
-        else:
-            st.warning(f"No trend data available for {selected_system} in the selected date range.")
+            # --- UPDATED: Performance Trend now linked to selected EQUIPMENT ---
+            st.subheader(f"Performance Trend for {selected_equip_name}")
+            
+            # Filter the original date-filtered df for the selected equipment's history
+            trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name]
+
+            if not trend_df_filtered.empty:
+                fig_trend = px.line(
+                    trend_df_filtered, x="DATE", y="SCORE", markers=True,
+                    title=f"Performance Trend for {selected_equip_name}"
+                )
+                fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
+                fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
+                st.plotly_chart(fig_trend, use_container_width=True)
+            else:
+                st.warning(f"No trend data available for {selected_equip_name} in the selected date range.")
+
     else:
-        st.info("Click a system above to see its latest equipment details and performance trend.")
+        st.info("Click a system above to see its latest equipment details.")
 
 if __name__ == "__main__":
     main()
