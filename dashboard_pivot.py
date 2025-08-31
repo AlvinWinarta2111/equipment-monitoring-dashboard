@@ -175,26 +175,26 @@ def main():
             gb_action.configure_default_column(wrapText=True, autoHeight=True)
             gridOptions_action = gb_action.build()
             gridOptions_action['domLayout'] = 'autoHeight'
-            AgGrid(action_detail_df, gridOptions=gridOptions_action, theme="streamlit", fit_columns_on_grid_load=True)
+            AgGrid(action_detail_df, gridOptions=gridOptions_action, theme="streamlit", fit_columns_on_grid_load=True, allow_unsafe_jscode=True)
 
             st.subheader(f"Performance Trend for {selected_equip_name}")
-            trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name]
+            trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
+            # Sort values to ensure the line connects points in chronological order
+            trend_df_filtered.sort_values(by="DATE", inplace=True)
+            
             if not trend_df_filtered.empty:
                 fig_trend = px.line(trend_df_filtered, x="DATE", y="SCORE", markers=True)
                 fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
                 fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
                 
-                # --- UPDATED: Capture clicks on the trend line chart ---
                 selected_points = plotly_events(fig_trend, click_event=True, key=f"trend_{selected_equip_name}")
 
-                # --- NEW: Display details for the clicked point on the trend line ---
                 if selected_points:
                     point = selected_points[0]
                     clicked_date = pd.to_datetime(point['x']).date()
                     
                     st.markdown(f"#### Historical Details for **{selected_equip_name}** on **{clicked_date.strftime('%d-%m-%Y')}**")
                     
-                    # Find the specific historical record
                     historical_record_df = df_filtered_by_date[
                         (df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name) &
                         (df_filtered_by_date["DATE"].dt.date == clicked_date)
