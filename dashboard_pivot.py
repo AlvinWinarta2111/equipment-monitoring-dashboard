@@ -54,6 +54,12 @@ def main():
     df = df.rename(columns={"CONDITION MONITORING SCORE": "SCORE"})
     df["SCORE"] = pd.to_numeric(df["SCORE"], errors="coerce")
     df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
+
+    # --- UPDATED: Clean categorical data to remove leading/trailing spaces ---
+    for col in ['AREA', 'SYSTEM', 'EQUIPMENT DESCRIPTION']:
+        if col in df.columns:
+            df[col] = df[col].str.strip()
+
     df.dropna(subset=['AREA', 'SYSTEM', 'EQUIPMENT DESCRIPTION', 'DATE', 'SCORE'], inplace=True)
     df["SCORE"] = df["SCORE"].astype(int)
     df["EQUIP_STATUS"] = df["SCORE"].apply(map_status)
@@ -69,6 +75,7 @@ def main():
         st.warning("No data available for the selected date range.")
         return
 
+    # --- Aggregation (Now more reliable due to cleaned data) ---
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
@@ -179,9 +186,7 @@ def main():
 
             st.subheader(f"Performance Trend for {selected_equip_name}")
             
-            # --- UPDATED: Reverted to original logic to ensure line is drawn ---
             trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
-            # Sort values to ensure the line connects points in chronological order
             trend_df_filtered.sort_values(by="DATE", inplace=True)
             
             if not trend_df_filtered.empty:
@@ -193,21 +198,18 @@ def main():
 
                 if selected_points:
                     point = selected_points[0]
-                    # Robustly get the date from the clicked point
                     clicked_date_str = point.get('x')
                     if clicked_date_str:
                         clicked_date = pd.to_datetime(clicked_date_str).date()
                         
                         st.markdown(f"#### Historical Details for **{selected_equip_name}** on **{clicked_date.strftime('%d-%m-%Y')}**")
                         
-                        # Find records for that day (could be multiple if min score was shared)
                         historical_record_df = df_filtered_by_date[
                             (df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name) &
                             (df_filtered_by_date["DATE"].dt.date == clicked_date)
                         ]
 
                         if not historical_record_df.empty:
-                            # Display all records from that day
                             for i, historical_record in historical_record_df.iterrows():
                                 historical_data = [{"EQUIPMENT DESCRIPTION": historical_record.get("EQUIPMENT DESCRIPTION"), "REPORTED BY": historical_record.get("REPORTED BY"), "FINDING": historical_record.get("FINDING"), "ACTION PLAN": historical_record.get("ACTION PLAN"), "PART NEEDED": historical_record.get("PART NEEDED")}]
                                 historical_df = pd.DataFrame(historical_data)
