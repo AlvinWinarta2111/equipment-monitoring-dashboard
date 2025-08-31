@@ -174,7 +174,9 @@ def main():
         detail_df = detail_df.sort_values(by="DATE", ascending=False).drop_duplicates(subset=["EQUIPMENT DESCRIPTION"], keep="first")
         detail_df["STATUS"] = detail_df["SCORE"].apply(map_status)
         
-        gb_details = GridOptionsBuilder.from_dataframe(detail_df)
+        # *** UPDATED: Define columns for the second-level grid ***
+        detail_display_cols = ["EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS"]
+        gb_details = GridOptionsBuilder.from_dataframe(detail_df[detail_display_cols])
         gb_details.configure_selection(selection_mode="single", use_checkbox=False)
         gb_details.configure_default_column(resizable=False)
         gb_details.configure_column("STATUS", cellStyle=cell_style_jscode)
@@ -182,39 +184,54 @@ def main():
         gridOptions_details['suppressMovableColumns'] = True
 
         detail_grid_response = AgGrid(
-            detail_df, gridOptions=gridOptions_details, enable_enterprise_modules=True,
+            detail_df[detail_display_cols], gridOptions=gridOptions_details, enable_enterprise_modules=True,
             update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
             height=300, theme="streamlit", allow_unsafe_jscode=True
         )
 
-        # --- NEW: Third-level drilldown for component details ---
+        # --- UPDATED: Third-level drilldown with a single AgGrid table ---
         selected_equipment_rows = detail_grid_response.get("selected_rows", [])
         if isinstance(selected_equipment_rows, pd.DataFrame):
             selected_equipment_rows = selected_equipment_rows.to_dict("records")
         
         if selected_equipment_rows:
-            selected_equip = selected_equipment_rows[0]
-            st.markdown(f"#### Details for: **{selected_equip.get('EQUIPMENT DESCRIPTION')}**")
+            # Get the full data row from the original detail_df, not just the displayed columns
+            selected_equip_name = selected_equipment_rows[0].get('EQUIPMENT DESCRIPTION')
+            selected_equip_full_details = detail_df[detail_df['EQUIPMENT DESCRIPTION'] == selected_equip_name].iloc[0]
 
-            # Create component status table
-            component_data = {
-                "Component": ["Vibration", "Oil Analysis", "Temperature", "Other Inspection"],
-                "Status": [
-                    selected_equip.get("VIBRATION"), selected_equip.get("OIL ANALYSIS"),
-                    selected_equip.get("TEMPERATURE"), selected_equip.get("OTHER INSPECTION")
-                ]
-            }
-            component_df = pd.DataFrame(component_data)
-            st.table(component_df.set_index("Component"))
+            st.markdown(f"#### Details for: **{selected_equip_name}**")
 
-            # Display details in separate expandable sections
-            with st.expander("Show Finding, Action Plan, and Parts Needed"):
-                st.markdown("**Finding:**")
-                st.info(selected_equip.get("FINDING", "N/A"))
-                st.markdown("**Action Plan:**")
-                st.info(selected_equip.get("ACTION PLAN", "N/A"))
-                st.markdown("**Part Needed:**")
-                st.info(selected_equip.get("PART NEEDED", "N/A"))
+            # Unpivot component data into a long format
+            component_data = []
+            components = ["VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"]
+            for comp in components:
+                component_data.append({
+                    "Component": comp.replace("_", " ").title(),
+                    "Status": selected_equip_full_details.get(comp, "N/A"),
+                    "Reported By": selected_equip_full_details.get("REPORTED BY", "N/A"),
+                    "Finding": selected_equip_full_details.get("FINDING", "N/A"),
+                    "Action Plan": selected_equip_full_details.get("ACTION PLAN", "N/A"),
+                    "Part Needed": selected_equip_full_details.get("PART NEEDED", "N/A")
+                })
+            
+            component_detail_df = pd.DataFrame(component_data)
+
+            # Build the AgGrid for component details
+            gb_comp_details = GridOptionsBuilder.from_dataframe(component_detail_df)
+            gb_comp_details.configure_default_column(resizable=False, suppressMovable=True, wrapText=True, autoHeight=True)
+            gb_comp_details.configure_column("Component", width=150)
+            gb_comp_details.configure_column("Status", width=150)
+            gb_comp_details.configure_column("Reported By", width=150)
+            gridOptions_comp_details = gb_comp_details.build()
+
+            AgGrid(
+                component_detail_df,
+                gridOptions=gridOptions_comp_details,
+                fit_columns_on_grid_load=True,
+                height=220,
+                theme="streamlit"
+            )
+
 
         # --- Performance Trend ---
         st.subheader(f"Performance Trend for {selected_system}")
