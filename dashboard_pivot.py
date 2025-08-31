@@ -213,19 +213,20 @@ def main():
             gb_action_details = GridOptionsBuilder.from_dataframe(action_detail_df)
             gb_action_details.configure_default_column(resizable=False, suppressMovable=True, wrapText=True, autoHeight=True)
             gridOptions_action_details = gb_action_details.build()
+            
+            # --- UPDATED: Use domLayout='autoHeight' for dynamic grid height ---
+            gridOptions_action_details['domLayout'] = 'autoHeight'
 
             AgGrid(
                 action_detail_df,
                 gridOptions=gridOptions_action_details,
                 fit_columns_on_grid_load=True,
-                height=150,
-                theme="streamlit"
+                theme="streamlit",
+                allow_unsafe_jscode=True # Needed for autoHeight with wrapped text
             )
 
-            # --- UPDATED: Performance Trend now linked to selected EQUIPMENT ---
+            # --- Performance Trend ---
             st.subheader(f"Performance Trend for {selected_equip_name}")
-            
-            # Filter the original date-filtered df for the selected equipment's history
             trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name]
 
             if not trend_df_filtered.empty:
