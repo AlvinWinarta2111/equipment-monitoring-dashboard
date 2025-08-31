@@ -52,13 +52,13 @@ def main():
     st.title("📊 Condition Monitoring Dashboard")
 
     RAW_FILE_URL = "https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/data/CONDITION%20MONITORING%20SCORECARD.xlsx"
-    
+
     @st.cache_data(ttl=300)  # cache for 5 minutes
     def load_data():
         response = requests.get(RAW_FILE_URL)
         response.raise_for_status()
         return pd.read_excel(io.BytesIO(response.content), sheet_name="Scorecard", header=1)
-    
+
     # Load data
     try:
         df = load_data()
