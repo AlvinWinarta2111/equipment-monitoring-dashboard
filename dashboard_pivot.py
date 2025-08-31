@@ -55,7 +55,7 @@ def main():
     df["SCORE"] = pd.to_numeric(df["SCORE"], errors="coerce")
     df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
 
-    # --- UPDATED: More robust cleaning of categorical data ---
+    # Clean categorical data to remove leading/trailing spaces
     for col in ['AREA', 'SYSTEM', 'EQUIPMENT DESCRIPTION']:
         if col in df.columns and df[col].dtype == 'object':
             df[col] = df[col].str.strip().str.upper()
@@ -75,7 +75,7 @@ def main():
         st.warning("No data available for the selected date range.")
         return
 
-    # --- Aggregation (Now reliable due to cleaned data) ---
+    # Aggregation
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
