@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode
+from streamlit_plotly_events import plotly_events
 import requests
 import io
 
@@ -193,8 +194,33 @@ def main():
                 fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
                 fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
                 
-                st.plotly_chart(fig_trend, use_container_width=True)
+                selected_points = plotly_events(fig_trend, click_event=True, key=f"trend_{selected_equip_name}")
 
+                if selected_points:
+                    point = selected_points[0]
+                    clicked_date_str = point.get('x')
+                    if clicked_date_str:
+                        clicked_date = pd.to_datetime(clicked_date_str).date()
+                        
+                        st.markdown(f"#### Historical Details for **{selected_equip_name}** on **{clicked_date.strftime('%d-%m-%Y')}**")
+                        
+                        historical_record_df = df_filtered_by_date[
+                            (df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name) &
+                            (df_filtered_by_date["DATE"].dt.date == clicked_date)
+                        ]
+
+                        if not historical_record_df.empty:
+                            for i, historical_record in historical_record_df.iterrows():
+                                historical_data = [{"EQUIPMENT DESCRIPTION": historical_record.get("EQUIPMENT DESCRIPTION"), "REPORTED BY": historical_record.get("REPORTED BY"), "FINDING": historical_record.get("FINDING"), "ACTION PLAN": historical_record.get("ACTION PLAN"), "PART NEEDED": historical_record.get("PART NEEDED")}]
+                                historical_df = pd.DataFrame(historical_data)
+
+                                gb_hist = GridOptionsBuilder.from_dataframe(historical_df)
+                                gb_hist.configure_default_column(wrapText=True, autoHeight=True)
+                                gridOptions_hist = gb_hist.build()
+                                gridOptions_hist['domLayout'] = 'autoHeight'
+                                AgGrid(historical_df, gridOptions=gridOptions_hist, theme="streamlit", fit_columns_on_grid_load=True)
+                        else:
+                            st.warning("Could not find the specific historical record.")
             else:
                 st.warning(f"No trend data available for {selected_equip_name} in the selected date range.")
     else:
