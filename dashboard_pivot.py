@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode, DataReturnMode
+import requests, io
 
 # =========================
 # Helper functions (for styling and status mapping)
@@ -50,17 +51,21 @@ def main():
     st.set_page_config(layout="wide")
     st.title("📊 Condition Monitoring Dashboard")
 
-    uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
-    if not uploaded_file:
-        st.info("Please upload a file to continue.")
+    RAW_FILE_URL = "https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/data/CONDITION%20MONITORING%20SCORECARD.xlsx"
+
+    @st.cache_data(ttl=300)  # cache for 5 minutes
+    def load_data():
+        response = requests.get(RAW_FILE_URL)
+        response.raise_for_status()
+        return pd.read_excel(io.BytesIO(response.content), sheet_name="Scorecard", header=1)
+
+    # Load data
+    try:
+        df = load_data()
+    except Exception as e:
+        st.error(f"Error reading data from GitHub file: {e}")
         return
 
-    # Load data from the "Scorecard" sheet
-    try:
-        df = pd.read_excel(uploaded_file, sheet_name="Scorecard", header=1)
-    except Exception as e:
-        st.error(f"Error reading the 'Scorecard' sheet in the file: {e}")
-        return
 
     # Normalize column names to UPPER
     df.columns = [col.strip().upper() for col in df.columns]
