@@ -51,7 +51,7 @@ def main():
     st.set_page_config(layout="wide")
     st.title("📊 Condition Monitoring Dashboard")
 
-    RAW_FILE_URL = "https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/data/CONDITION%20MONITORING%20SCORECARD.xlsx"
+    RAW_FILE_URL = "https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/CONDITION%20MONITORING%20SCORECARD.xlsx"
 
     @st.cache_data(ttl=300)  # cache for 5 minutes
     def load_data():
