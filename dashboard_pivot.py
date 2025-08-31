@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode, DataReturnMode
-import requests, io
+import requests
+import io
 
 # =========================
 # Helper functions (for styling and status mapping)
@@ -34,16 +35,6 @@ def color_score(val):
         return "background-color: green; color: white;"
     return ""
 
-def color_status(val):
-    """Returns CSS style for STATUS cells (used in pandas Styler)."""
-    if val == "Need Action":
-        return "background-color: red; color: white;"
-    elif val == "Caution":
-        return "background-color: yellow; color: black;"
-    elif val == "Okay":
-        return "background-color: green; color: white;"
-    return ""
-
 # =========================
 # Main Streamlit App
 # =========================
@@ -66,17 +57,17 @@ def main():
         st.error(f"Error reading data from GitHub file: {e}")
         return
 
-
     # Normalize column names to UPPER
     df.columns = [col.strip().upper() for col in df.columns]
 
     # Ensure required column exists
-    if "CONDITION MONITORING SCORE" not in df.columns:
-        st.error("Error: A column named 'CONDITION MONITORING SCORE' was not found in your file.")
+    required_score_col = "CONDITION MONITORING SCORE"
+    if required_score_col not in df.columns:
+        st.error(f"Error: A column named '{required_score_col}' was not found in your file.")
         return
 
     # Rename and coerce types
-    df = df.rename(columns={"CONDITION MONITORING SCORE": "SCORE"})
+    df = df.rename(columns={required_score_col: "SCORE"})
     df["SCORE"] = pd.to_numeric(df["SCORE"], errors="coerce")
     df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
 
@@ -84,10 +75,10 @@ def main():
     required_subset = ['AREA', 'SYSTEM', 'EQUIPMENT DESCRIPTION', 'DATE', 'SCORE']
     df.dropna(subset=required_subset, inplace=True)
 
-    # Convert SCORE to integer (safe now because we dropped NaNs)
+    # Convert SCORE to integer
     df["SCORE"] = df["SCORE"].astype(int)
 
-    # Create text status for pie charts
+    # Create text status
     df["EQUIP_STATUS"] = df["SCORE"].apply(map_status)
 
     # --- FILTERS ---
@@ -96,7 +87,7 @@ def main():
     if len(date_range) == 2:
         df_filtered_by_date = df[(df["DATE"].dt.date >= date_range[0]) & (df["DATE"].dt.date <= date_range[1])]
     else:
-        df_filtered_by_date = df # Default to all data if range is incomplete
+        df_filtered_by_date = df
 
     if df_filtered_by_date.empty:
         st.warning("No data available for the selected date range.")
@@ -106,220 +97,142 @@ def main():
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
-    # ======================
-    # 📊 BAR CHARTS
-    # ======================
+    # --- VISUALIZATIONS ---
     st.subheader("AREA Score Distribution")
     fig_area = px.bar(
-        area_scores, x="AREA", y="SCORE",
-        color=area_scores["SCORE"].astype(str),
-        text="SCORE",
-        color_discrete_map={"3": "green", "2": "yellow", "1": "red"},
-        title="Lowest Score per AREA",
-        # *** UPDATED: Enforce legend order ***
-        category_orders={"SCORE": ["3", "2", "1"]}
+        area_scores, x="AREA", y="SCORE", color=area_scores["SCORE"].astype(str),
+        text="SCORE", color_discrete_map={"3": "green", "2": "yellow", "1": "red"},
+        title="Lowest Score per AREA", category_orders={"SCORE": ["3", "2", "1"]}
     )
     fig_area.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1))
     st.plotly_chart(fig_area, use_container_width=True)
 
-    # ======================
-    # 🥧 PIE CHARTS
-    # ======================
     st.subheader("Equipment Status Distribution per AREA")
-    # Use the latest status for the pie charts within the date range
     latest_for_pie = df_filtered_by_date.sort_values("DATE").groupby("EQUIPMENT DESCRIPTION", as_index=False).last()
     area_dist = latest_for_pie.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
     areas = sorted(area_dist["AREA"].unique())
-
     cols_per_row = 3
     for i in range(0, len(areas), cols_per_row):
         cols = st.columns(cols_per_row)
-        for j, area in enumerate(areas[i:i+cols_per_row]):
+        for j, area in enumerate(areas[i:i + cols_per_row]):
             if j < len(cols):
                 with cols[j]:
                     st.markdown(f"**{area}**")
                     area_data = area_dist[area_dist["AREA"] == area]
                     fig = px.pie(
-                        area_data, names="EQUIP_STATUS", values="COUNT",
-                        color="EQUIP_STATUS",
+                        area_data, names="EQUIP_STATUS", values="COUNT", color="EQUIP_STATUS",
                         color_discrete_map={"Need Action": "red", "Caution": "yellow", "Okay": "green"},
-                        hole=0.4,
-                        # *** UPDATED: Enforce slice and legend order ***
-                        category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
+                        hole=0.4, category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
                     )
-                    # *** UPDATED: Add count labels to slices ***
                     fig.update_traces(textinfo='percent+value', textfont_size=16)
                     fig.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
                     st.plotly_chart(fig, use_container_width=True)
 
-    # ======================
-    # SYSTEM Score Distribution
-    # ======================
     st.subheader("SYSTEM Score Distribution")
     fig_system = px.bar(
-        system_scores, x="SYSTEM", y="SCORE",
-        color=system_scores["SCORE"].astype(str),
-        text="SCORE",
-        color_discrete_map={"3": "green", "2": "yellow", "1": "red"},
-        title="Lowest Score per SYSTEM",
-        # *** UPDATED: Enforce legend order ***
-        category_orders={"SCORE": ["3", "2", "1"]}
+        system_scores, x="SYSTEM", y="SCORE", color=system_scores["SCORE"].astype(str),
+        text="SCORE", color_discrete_map={"3": "green", "2": "yellow", "1": "red"},
+        title="Lowest Score per SYSTEM", category_orders={"SCORE": ["3", "2", "1"]}
     )
     fig_system.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1), xaxis=dict(tickangle=-45))
     st.plotly_chart(fig_system, use_container_width=True)
 
-    # ======================
-    # Area Status (table)
-    # ======================
     st.subheader("Area Status (Lowest Score)")
     st.dataframe(area_scores.style.map(color_score, subset=["SCORE"]).hide(axis="index"))
 
-    # ======================
-    # 📍 SYSTEM STATUS EXPLORER (Summary + Drilldown)
-    # ======================
+    # --- SYSTEM STATUS EXPLORER ---
     st.subheader("System Status Explorer")
-
-    # --- Table 1: System Summary ---
-    system_summary = (
-        df_filtered_by_date.groupby("SYSTEM")
-        .agg({"SCORE": "min"})
-        .reset_index()
-    )
+    system_summary = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
     system_summary["STATUS"] = system_summary["SCORE"].apply(map_status)
-
     gb = GridOptionsBuilder.from_dataframe(system_summary[["SYSTEM", "STATUS", "SCORE"]])
     gb.configure_selection(selection_mode="single", use_checkbox=False)
-    gb.configure_selection(rowMultiSelectWithClick=False, suppressRowClickSelection=False)
     gb.configure_default_column(resizable=False, filter=True, sortable=True)
-    
-
-    # ✅ Add color grading for STATUS column
     cell_style_jscode = JsCode("""
     function(params) {
-        if (params.value == 'Okay') {
-            return { 'color': 'white', 'backgroundColor': 'green', 'fontWeight': 'bold', 'textAlign': 'center' };
-        } else if (params.value == 'Caution') {
-            return { 'color': 'black', 'backgroundColor': 'yellow', 'fontWeight': 'bold', 'textAlign': 'center' };
-        } else if (params.value == 'Need Action') {
-            return { 'color': 'white', 'backgroundColor': 'red', 'fontWeight': 'bold', 'textAlign': 'center' };
-        }
+        if (params.value == 'Okay') { return {'backgroundColor': 'green', 'color': 'white'}; }
+        if (params.value == 'Caution') { return {'backgroundColor': 'yellow', 'color': 'black'}; }
+        if (params.value == 'Need Action') { return {'backgroundColor': 'red', 'color': 'white'}; }
         return null;
-    }
-    """)
-    # Make STATUS and SCORE columns narrower
-    gb.configure_column("STATUS", width=120)   # adjust number as needed
-    gb.configure_column("SCORE", width=90)     # adjust number as needed
-
+    }""")
     gb.configure_column("STATUS", cellStyle=cell_style_jscode)
-    
     gridOptions = gb.build()
     gridOptions['suppressMovableColumns'] = True
-
     grid_response = AgGrid(
-        system_summary,
-        gridOptions=gridOptions,
-        enable_enterprise_modules=True,
-        update_mode=GridUpdateMode.SELECTION_CHANGED,
-        fit_columns_on_grid_load=True,
-        height=300,
-        theme="streamlit",
-        allow_unsafe_jscode=True
+        system_summary, gridOptions=gridOptions, enable_enterprise_modules=True,
+        update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
+        height=300, theme="streamlit", allow_unsafe_jscode=True
     )
 
-    # --- Table 2: Equipment Details (only if a system is clicked) ---
-    selected = grid_response.get("selected_rows", [])
+    selected_system_rows = grid_response.get("selected_rows", [])
+    if isinstance(selected_system_rows, pd.DataFrame):
+        selected_system_rows = selected_system_rows.to_dict("records")
 
-    if isinstance(selected, pd.DataFrame):
-        selected = selected.to_dict("records")
-    
-    if selected:
-        selected_system = selected[0].get("SYSTEM")
+    if selected_system_rows:
+        selected_system = selected_system_rows[0].get("SYSTEM")
+        st.markdown(f"### Equipment Details for **{selected_system}** (Latest Status in Range)")
+        detail_df = df_filtered_by_date[df_filtered_by_date["SYSTEM"] == selected_system].copy()
+        detail_df = detail_df.sort_values(by="DATE", ascending=False).drop_duplicates(subset=["EQUIPMENT DESCRIPTION"], keep="first")
+        detail_df["STATUS"] = detail_df["SCORE"].apply(map_status)
+        
+        gb_details = GridOptionsBuilder.from_dataframe(detail_df)
+        gb_details.configure_selection(selection_mode="single", use_checkbox=False)
+        gb_details.configure_default_column(resizable=False)
+        gb_details.configure_column("STATUS", cellStyle=cell_style_jscode)
+        gridOptions_details = gb_details.build()
+        gridOptions_details['suppressMovableColumns'] = True
 
-        if selected_system:
-            st.markdown(f"### Equipment Details for **{selected_system}** (Latest Status in Range)")
+        detail_grid_response = AgGrid(
+            detail_df, gridOptions=gridOptions_details, enable_enterprise_modules=True,
+            update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
+            height=300, theme="streamlit", allow_unsafe_jscode=True
+        )
 
-            # Filter the date-ranged data for the selected system
-            detail_df = df_filtered_by_date[df_filtered_by_date["SYSTEM"] == selected_system].copy()
-            
-            # Find the latest record for each piece of equipment within that system
-            detail_df = detail_df.sort_values(by="DATE", ascending=False)
-            detail_df = detail_df.drop_duplicates(subset=["EQUIPMENT DESCRIPTION"], keep="first")
+        # --- NEW: Third-level drilldown for component details ---
+        selected_equipment_rows = detail_grid_response.get("selected_rows", [])
+        if isinstance(selected_equipment_rows, pd.DataFrame):
+            selected_equipment_rows = selected_equipment_rows.to_dict("records")
+        
+        if selected_equipment_rows:
+            selected_equip = selected_equipment_rows[0]
+            st.markdown(f"#### Details for: **{selected_equip.get('EQUIPMENT DESCRIPTION')}**")
 
-            detail_df["DATE"] = detail_df["DATE"].dt.strftime('%d-%m-%Y')
-            detail_df["STATUS"] = detail_df["SCORE"].apply(map_status)
-
-            display_cols = [
-                "EQUIPMENT DESCRIPTION", "DATE", "SCORE",
-                "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION", "STATUS",
-                "FINDING", "ACTION PLAN"
-            ]
-            display_cols = [c for c in display_cols if c in detail_df.columns]
-
-            gb_details = GridOptionsBuilder.from_dataframe(detail_df[display_cols])
-            
-            gb_details.configure_selection(selection_mode="single", use_checkbox=False, rowMultiSelectWithClick=False, suppressRowClickSelection=False)
-            
-            gb_details.configure_default_column(resizable=False)
-
-            # Add cell styling for the 'STATUS' column based on text
-            cell_style_jscode = JsCode("""
-            function(params) {
-                if (params.value == 'Need Action') { return {'backgroundColor': 'red', 'color': 'white'}; }
-                if (params.value == 'Caution') { return {'backgroundColor': 'yellow', 'color': 'black'}; }
-                if (params.value == 'Okay') { return {'backgroundColor': 'green', 'color': 'white'}; }
-                return null;
+            # Create component status table
+            component_data = {
+                "Component": ["Vibration", "Oil Analysis", "Temperature", "Other Inspection"],
+                "Status": [
+                    selected_equip.get("VIBRATION"), selected_equip.get("OIL ANALYSIS"),
+                    selected_equip.get("TEMPERATURE"), selected_equip.get("OTHER INSPECTION")
+                ]
             }
-            """)
-            gb_details.configure_column("STATUS", cellStyle=cell_style_jscode)
-            
-            # Configure column widths and text wrapping
-            gb_details.configure_column("EQUIPMENT DESCRIPTION", width=350)
-            gb_details.configure_column("FINDING", width=400, wrapText=True, autoHeight=True)
-            gb_details.configure_column("ACTION PLAN", width=400, wrapText=True, autoHeight=True)
-            
-            gridOptions_details = gb_details.build()
+            component_df = pd.DataFrame(component_data)
+            st.table(component_df.set_index("Component"))
 
-            gridOptions_details['suppressMovableColumns'] = True
+            # Display details in separate expandable sections
+            with st.expander("Show Finding, Action Plan, and Parts Needed"):
+                st.markdown("**Finding:**")
+                st.info(selected_equip.get("FINDING", "N/A"))
+                st.markdown("**Action Plan:**")
+                st.info(selected_equip.get("ACTION PLAN", "N/A"))
+                st.markdown("**Part Needed:**")
+                st.info(selected_equip.get("PART NEEDED", "N/A"))
 
-            # Calculate dynamic height for the table
-            num_rows = len(detail_df)
-            table_height = 100 + (num_rows * 35) 
-            if num_rows > 10: # Cap the height to avoid excessive length
-                table_height = 450
-
-            AgGrid(
-                detail_df[display_cols],
-                gridOptions=gridOptions_details,
-                height=table_height,
-                theme="streamlit",
-                allow_unsafe_jscode=True
+        # --- Performance Trend ---
+        st.subheader(f"Performance Trend for {selected_system}")
+        trend_df = df_filtered_by_date.groupby(['DATE', 'SYSTEM'])['SCORE'].min().reset_index()
+        trend_df_filtered = trend_df[trend_df["SYSTEM"] == selected_system]
+        if not trend_df_filtered.empty:
+            fig_trend = px.line(
+                trend_df_filtered, x="DATE", y="SCORE", markers=True,
+                title=f"Performance Trend for {selected_system}"
             )
-
-            # ======================
-            # 📈 PERFORMANCE TREND (NOW LINKED TO SELECTION)
-            # ======================
-            st.subheader(f"Performance Trend for {selected_system}")
-            
-            # Use the date-filtered dataframe for the trend
-            trend_df = df_filtered_by_date.groupby(['DATE', 'SYSTEM'])['SCORE'].min().reset_index()
-            
-            # Filter the trend data for the selected system from the AgGrid table
-            trend_df_filtered = trend_df[trend_df["SYSTEM"] == selected_system]
-
-            if not trend_df_filtered.empty:
-                fig_trend = px.line(
-                    trend_df_filtered, x="DATE", y="SCORE", markers=True,
-                    title=f"Performance Trend for {selected_system}"
-                )
-                fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
-                fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
-                st.plotly_chart(fig_trend, use_container_width=True)
-            else:
-                st.warning(f"No trend data available for {selected_system} in the selected date range.")
-
+            fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
+            fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
+            st.plotly_chart(fig_trend, use_container_width=True)
+        else:
+            st.warning(f"No trend data available for {selected_system} in the selected date range.")
     else:
         st.info("Click a system above to see its latest equipment details and performance trend.")
 
-
 if __name__ == "__main__":
     main()
+
