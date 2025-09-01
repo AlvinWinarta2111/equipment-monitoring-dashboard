@@ -211,7 +211,8 @@ def main():
             gridOptions_action = gb_action.build()
             gridOptions_action['domLayout'] = 'autoHeight'
             AgGrid(action_detail_df, gridOptions=gridOptions_action, theme="streamlit", fit_columns_on_grid_load=True, allow_unsafe_jscode=True)
-
+            
+            # --- Performance Trend ---
             st.subheader(f"Performance Trend for {selected_equip_name}")
             
             # Aggregate the data to show one score per day (the minimum score)
@@ -251,11 +252,11 @@ def main():
                     st.markdown(f"**Action Plan:** {selected_row.get('ACTION PLAN', 'N/A')}")
                 else:
                     st.info("Click a point on the trend chart to see details for that specific date.")
-
             else:
                 st.warning(f"No trend data available for {selected_equip_name} in the selected date range.")
+
         else:
-            st.info("Select a piece of equipment from the table above to see its performance trend.")
+            st.info("Select a piece of equipment from the table above to see its latest details.")
 
     else:
         st.info("Click a system above to see its latest equipment details.")
