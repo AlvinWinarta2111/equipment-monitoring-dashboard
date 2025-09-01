@@ -210,7 +210,9 @@ def main():
 
             st.subheader(f"Performance Trend for {selected_equip_name}")
             
+            # Aggregate the data to show one score per day (the minimum score)
             trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
+            trend_df_filtered = trend_df_filtered.groupby('DATE')['SCORE'].min().reset_index()
             trend_df_filtered.sort_values(by="DATE", inplace=True)
             
             if not trend_df_filtered.empty:
@@ -231,7 +233,11 @@ def main():
                     clicked_date_str = selected_points[0]['x']
                     # Convert the string date from the event to a datetime object for comparison
                     clicked_date = pd.to_datetime(clicked_date_str).normalize()
-                    selected_row = trend_df_filtered[trend_df_filtered['DATE'].dt.normalize() == clicked_date].iloc[0]
+                    # Use the original, non-aggregated dataframe to find the details
+                    selected_row = df_filtered_by_date[
+                        (df_filtered_by_date['EQUIPMENT DESCRIPTION'] == selected_equip_name) & 
+                        (df_filtered_by_date['DATE'].dt.normalize() == clicked_date)
+                    ].iloc[0]
                     
                     st.subheader(f"Details for {selected_equip_name} on {selected_row['DATE'].strftime('%d-%m-%Y')}")
                     
