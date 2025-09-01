@@ -53,10 +53,6 @@ def main():
     st.set_page_config(layout="wide")
     st.title("📊 Condition Monitoring Dashboard")
 
-    if 'clicked_point_index' not in st.session_state:
-        st.session_state.clicked_point_index = None
-    if 'selected_equipment_name' not in st.session_state:
-        st.session_state.selected_equipment_name = None
     if 'clicked_trend_point' not in st.session_state:
         st.session_state.clicked_trend_point = None
 
@@ -222,8 +218,6 @@ def main():
                 fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
                 # Invert the y-axis to make "Need Action" (1) appear at the top
                 fig_trend.update_layout(yaxis=dict(title="Score", range=[3.5, 0.5], dtick=1, fixedrange=True))
-                
-                st.markdown("### Performance Trend (Click a point on the chart)")
                 
                 # Use plotly_events to capture the click
                 selected_points = plotly_events(
