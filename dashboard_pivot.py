@@ -216,7 +216,7 @@ def main():
             if not trend_df_filtered.empty:
                 fig_trend = px.line(trend_df_filtered, x="DATE", y="SCORE", markers=True)
                 fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
-                # Invert the y-axis to make "Need Action" (1) appear at the top
+                # Set y-axis range to show 3 at the top and 1 at the bottom, as requested.
                 fig_trend.update_layout(yaxis=dict(title="Score", range=[3.5, 0.5], dtick=1, fixedrange=True))
                 
                 # Use plotly_events to capture the click
