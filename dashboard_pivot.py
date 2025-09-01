@@ -86,6 +86,10 @@ def main():
 
     df.dropna(subset=['AREA', 'SYSTEM', 'EQUIPMENT DESCRIPTION', 'DATE', 'SCORE'], inplace=True)
     df["SCORE"] = df["SCORE"].astype(int)
+
+    # CRUCIAL FIX: Filter out any scores that are not 1, 2, or 3
+    df = df[df["SCORE"].isin([1, 2, 3])]
+
     df["EQUIP_STATUS"] = df["SCORE"].apply(map_status)
 
     min_date, max_date = df["DATE"].min().date(), df["DATE"].max().date()
