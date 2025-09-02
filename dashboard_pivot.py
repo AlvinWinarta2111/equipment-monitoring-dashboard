@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode
-from streamlit_plotly_events import plotly_events
 import requests
 import io
 
@@ -11,39 +10,18 @@ import io
 # =========================
 
 def map_status(score):
-    """Converts a numeric score (1, 2, 3) to a text status."""
-    if score == 1:
-        return "Need Action"
-    elif score == 2:
-        return "Caution"
-    elif score == 3:
-        return "Okay"
+    if score == 1: return "Need Action"
+    if score == 2: return "Caution"
+    if score == 3: return "Okay"
     return "UNKNOWN"
 
 def color_score(val):
-    """Returns CSS style for SCORE cells (used in pandas Styler)."""
-    if pd.isna(val):
-        return ""
-    try:
-        v = int(val)
-    except Exception:
-        return ""
-    if v == 1:
-        return "background-color: red; color: white;"
-    elif v == 2:
-        return "background-color: yellow; color: black;"
-    elif v == 3:
-        return "background-color: green; color: white;"
-    return ""
-
-def color_status(val):
-    """Returns CSS style for STATUS cells (used in pandas Styler)."""
-    if val == "Need Action":
-        return "background-color: red; color: white;"
-    elif val == "Caution":
-        return "background-color: yellow; color: black;"
-    elif val =="Okay":
-        return "background-color: green; color: white;"
+    if pd.isna(val): return ""
+    try: v = int(val)
+    except Exception: return ""
+    if v == 1: return "background-color: red; color: white;"
+    if v == 2: return "background-color: yellow; color: black;"
+    if v == 3: return "background-color: green; color: white;"
     return ""
 
 # =========================
@@ -52,9 +30,6 @@ def color_status(val):
 def main():
     st.set_page_config(layout="wide")
     st.title("📊 Condition Monitoring Dashboard")
-
-    if 'clicked_trend_point' not in st.session_state:
-        st.session_state.clicked_trend_point = None
 
     RAW_FILE_URL = "https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/data/CONDITION%20MONITORING%20SCORECARD.xlsx"
 
@@ -86,10 +61,6 @@ def main():
 
     df.dropna(subset=['AREA', 'SYSTEM', 'EQUIPMENT DESCRIPTION', 'DATE', 'SCORE'], inplace=True)
     df["SCORE"] = df["SCORE"].astype(int)
-
-    # CRUCIAL FIX: Filter out any scores that are not 1, 2, or 3
-    df = df[df["SCORE"].isin([1, 2, 3])]
-
     df["EQUIP_STATUS"] = df["SCORE"].apply(map_status)
 
     min_date, max_date = df["DATE"].min().date(), df["DATE"].max().date()
@@ -211,11 +182,9 @@ def main():
             gridOptions_action = gb_action.build()
             gridOptions_action['domLayout'] = 'autoHeight'
             AgGrid(action_detail_df, gridOptions=gridOptions_action, theme="streamlit", fit_columns_on_grid_load=True, allow_unsafe_jscode=True)
-            
-            # --- Performance Trend ---
+
             st.subheader(f"Performance Trend for {selected_equip_name}")
             
-            # Aggregate the data to show one score per day (the minimum score)
             trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
             trend_df_filtered.sort_values(by="DATE", inplace=True)
             
@@ -226,42 +195,11 @@ def main():
                 
                 st.plotly_chart(fig_trend, use_container_width=True)
 
-                
-                # Use plotly_events to capture the click
-                selected_points = plotly_events(
-                    fig_trend,
-                    click_event=True,
-                    key=f"trend_chart_{selected_equip_name}"
-                )
-                
-                # Check for a clicked point and display details
-                if selected_points:
-                    clicked_date_str = selected_points[0]['x']
-                    # Convert the string date from the event to a datetime object for comparison
-                    clicked_date = pd.to_datetime(clicked_date_str).normalize()
-                    # Use the original, non-aggregated dataframe to find the details
-                    selected_row = df_filtered_by_date[
-                        (df_filtered_by_date['EQUIPMENT DESCRIPTION'] == selected_equip_name) & 
-                        (df_filtered_by_date['DATE'].dt.normalize() == clicked_date)
-                    ].iloc[0]
-                    
-                    st.subheader(f"Details for {selected_equip_name} on {selected_row['DATE'].strftime('%d-%m-%Y')}")
-                    
-                    st.markdown(f"**Score:** {selected_row['SCORE']}")
-                    st.markdown(f"**Status:** {selected_row['EQUIP_STATUS']}")
-                    st.markdown(f"**Finding:** {selected_row.get('FINDING', 'N/A')}")
-                    st.markdown(f"**Action Plan:** {selected_row.get('ACTION PLAN', 'N/A')}")
-                else:
-                    st.info("Click a point on the trend chart to see details for that specific date.")
             else:
                 st.warning(f"No trend data available for {selected_equip_name} in the selected date range.")
-
-        else:
-            st.info("Select a piece of equipment from the table above to see its latest details.")
-
     else:
         st.info("Click a system above to see its latest equipment details.")
 
-
 if __name__ == "__main__":
     main()
+
