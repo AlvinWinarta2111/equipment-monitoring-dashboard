@@ -224,7 +224,7 @@ def main():
                 fig_trend = px.line(trend_df_filtered, x="DATE", y="SCORE", markers=True)
                 fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
                 # Set y-axis range to show 3 at the top and 1 at the bottom, as requested.
-                fig_trend.update_layout(yaxis=dict(title="Score", range=[3.5, 0.5], dtick=1, fixedrange=True))
+                fig_trend.update_layout(yaxis=dict(title="Score", range=[0, 3], dtick=1, fixedrange=True))
                 
                 # Use plotly_events to capture the click
                 selected_points = plotly_events(
