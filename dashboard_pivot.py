@@ -217,7 +217,6 @@ def main():
             
             # Aggregate the data to show one score per day (the minimum score)
             trend_df_filtered = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
-            trend_df_filtered = trend_df_filtered.groupby('DATE')['SCORE'].min().reset_index()
             trend_df_filtered.sort_values(by="DATE", inplace=True)
             
             if not trend_df_filtered.empty:
