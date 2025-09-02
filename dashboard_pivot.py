@@ -218,10 +218,10 @@ def main():
             # Use the new standalone aggregation method
             df_equip = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
             if not df_equip.empty:
-                idx = df_equip.groupby('DATE')['SCORE'].idxmin()
-                aggregated_df = df_equip.loc[idx].reset_index(drop=True)
-
-                fig_trend = px.line(aggregated_df, x="DATE", y="SCORE", markers=True)
+                # Find the last record for each date to get all details
+                df_equip = df_equip.sort_values(by='DATE', ascending=True).drop_duplicates(subset=['DATE'], keep='last')
+                
+                fig_trend = px.line(df_equip, x="DATE", y="SCORE", markers=True)
                 fig_trend.update_xaxes(tickformat="%d/%m/%y", fixedrange=True)
                 fig_trend.update_layout(yaxis=dict(title="Score", range=[0.5, 3.5], dtick=1, fixedrange=True))
                 
@@ -238,7 +238,7 @@ def main():
                     clicked_date = pd.to_datetime(clicked_date_str).normalize()
                     
                     # Use the new aggregated_df to find the details
-                    selected_row = aggregated_df[aggregated_df['DATE'].dt.normalize() == clicked_date].iloc[0]
+                    selected_row = df_equip[df_equip['DATE'].dt.normalize() == clicked_date].iloc[0]
                     
                     st.subheader(f"Details for {selected_equip_name} on {selected_row['DATE'].strftime('%d-%m-%Y')}")
                     
