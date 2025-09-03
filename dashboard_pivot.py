@@ -57,7 +57,7 @@ def main():
     with col1:
         st.image("https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/images/alamtri_logo.jpeg", width=200)
     with col2:
-        st.title("Condition Monitoring Dashboard")
+        st.title("Site Condition Monitoring Dashboard")
     # --- End Logo and Title ---
 
     if 'clicked_trend_point' not in st.session_state:
