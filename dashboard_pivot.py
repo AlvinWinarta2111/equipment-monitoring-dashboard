@@ -51,7 +51,13 @@ def color_status(val):
 # =========================
 def main():
     st.set_page_config(layout="wide")
-    st.title("📊 Condition Monitoring Dashboard")
+        # --- Add Logo and Title ---
+    col1, col2 = st.columns([1, 10])
+    with col1:
+        st.image("https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/images/alamtri_logo.jpeg", width=50)
+    with col2:
+        st.title("Site Condition Monitoring Dashboard")
+    # --- End Logo and Title ---
 
     if 'clicked_trend_point' not in st.session_state:
         st.session_state.clicked_trend_point = None
