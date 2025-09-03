@@ -228,26 +228,6 @@ def main():
                 
                 st.plotly_chart(fig_trend, use_container_width=True)
             
-                selected_points = plotly_events(
-                    fig_trend,
-                    click_event=True,
-                    key=f"trend_chart_{selected_equip_name}"
-                )
-                
-                if selected_points:
-                    clicked_date_str = selected_points[0]['x']
-                    clicked_date = pd.to_datetime(clicked_date_str).normalize()
-                    
-                    selected_row = aggregated_df[aggregated_df['DATE'].dt.normalize() == clicked_date].iloc[0]
-                    
-                    st.subheader(f"Details for {selected_equip_name} on {selected_row['DATE'].strftime('%d-%m-%Y')}")
-                    
-                    st.markdown(f"**Score:** {selected_row['SCORE']}")
-                    st.markdown(f"**Status:** {selected_row['EQUIP_STATUS']}")
-                    st.markdown(f"**Finding:** {selected_row.get('FINDING', 'N/A')}")
-                    st.markdown(f"**Action Plan:** {selected_row.get('ACTION PLAN', 'N/A')}")
-                else:
-                    st.info("Click a point on the trend chart to see details for that specific date.")
             else:
                 st.warning(f"No trend data available for {selected_equip_name} in the selected date range.")
 
