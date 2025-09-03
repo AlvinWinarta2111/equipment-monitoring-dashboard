@@ -54,7 +54,7 @@ def main():
         # --- Add Logo and Title ---
     col1, col2 = st.columns([1, 10])
     with col1:
-        st.image("https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/images/alamtri_logo.jpeg", width=50)
+        st.image("https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/images/alamtri_logo.jpeg", width=175)
     with col2:
         st.title("Site Condition Monitoring Dashboard")
     # --- End Logo and Title ---
