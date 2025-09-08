@@ -94,7 +94,7 @@ def main():
 
     # Filter scores
     df = df[df["SCORE"].isin([1, 2, 3])]
-    df["EQUIP_STATUS"] = df["SCORE"].apply(map_status)
+    df["STATUS"] = df["SCORE"].apply(map_status)
 
     # =========================
     # Dashboard Components
@@ -134,7 +134,7 @@ def main():
     with col_right:
         st.subheader("Equipment Status Distribution per AREA")
         # Use df_latest_status for pie charts as well
-        area_dist = df_latest_status.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
+        area_dist = df_latest_status.groupby(["AREA", "STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
         areas = sorted(area_dist["AREA"].unique())
         cols_per_row = 3
         for i in range(0, len(areas), cols_per_row):
@@ -145,9 +145,9 @@ def main():
                         st.markdown(f"**{area}**")
                         area_data = area_dist[area_dist["AREA"] == area]
                         fig_pie = px.pie(
-                            area_data, names="EQUIP_STATUS", values="COUNT", color="EQUIP_STATUS",
+                            area_data, names="STATUS", values="COUNT", color="STATUS",
                             color_discrete_map={"Need Action": "red", "Caution": "yellow", "Okay": "green"}, hole=0.4,
-                            category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
+                            category_orders={"STATUS": ["Okay", "Caution", "Need Action"]}
                         )
                         fig_pie.update_traces(textinfo='percent+value', textfont_size=16)
                         fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
@@ -207,7 +207,12 @@ def main():
         # The detail_df logic was already correct, but we'll use df_latest_status for consistency
         detail_df = df_latest_status[df_latest_status["SYSTEM"] == selected_system].copy()
         
-        detail_display_cols = ["EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS", "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"]
+        # Define the ideal list of columns we want to show
+        desired_display_cols = ["EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS", "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"]
+        
+        # Create the final list by only taking columns that actually exist in detail_df
+        detail_display_cols = [col for col in desired_display_cols if col in detail_df.columns]
+        
         gb_details = GridOptionsBuilder.from_dataframe(detail_df[detail_display_cols])
         gb_details.configure_selection(selection_mode="single", use_checkbox=False)
         gb_details.configure_default_column(resizable=False)
@@ -301,3 +306,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
