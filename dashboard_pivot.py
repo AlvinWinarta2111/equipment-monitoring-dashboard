@@ -112,6 +112,11 @@ def main():
         return
 
     # Aggregation
+
+    # Create a two-column layout for side-by-side charts
+    col1, col2 = st.columns(2)
+
+    with col1:
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
@@ -123,7 +128,8 @@ def main():
     )
     fig_area.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1))
     st.plotly_chart(fig_area, use_container_width=True)
-
+    
+    with col2:
     st.subheader("Equipment Status Distribution per AREA")
     latest_for_pie = df_filtered_by_date.sort_values("DATE").groupby("EQUIPMENT DESCRIPTION", as_index=False).last()
     area_dist = latest_for_pie.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
