@@ -176,9 +176,43 @@ def main():
     
     st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True)
 
-    st.subheader("System Status Explorer")
+    # Calculate status percentages for the System Status Explorer table
     system_summary = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
     system_summary["STATUS"] = system_summary["SCORE"].apply(map_status)
+    status_counts = system_summary["STATUS"].value_counts().reset_index()
+    status_counts.columns = ["STATUS", "COUNT"]
+    total_systems = status_counts["COUNT"].sum()
+    status_counts["PERCENTAGE"] = (status_counts["COUNT"] / total_systems * 100).round(1)
+    
+    # Sort for consistent display order
+    status_counts["STATUS"] = pd.Categorical(status_counts["STATUS"], categories=["Okay", "Caution", "Need Action"], ordered=True)
+    status_counts = status_counts.sort_values("STATUS")
+    
+    st.subheader("Overall System Status Distribution")
+    cols_status = st.columns(3)
+    # Display each metric with a color-coded value
+    for idx, row in status_counts.iterrows():
+        status_color = ""
+        if row["STATUS"] == "Okay":
+            status_color = "#34A853"  # Green
+        elif row["STATUS"] == "Caution":
+            status_color = "#FBBC04"  # Yellow
+        else:
+            status_color = "#EA4335"  # Red
+        
+        with cols_status[idx]:
+            st.metric(
+                label=row["STATUS"],
+                value=f"{row['PERCENTAGE']}%",
+                delta=f"{row['COUNT']} systems"
+            )
+            # Use a little bit of markdown to apply color directly to the value
+            st.markdown(
+                f"<style> .st-emotion-cache-121p6f9 {{ color: {status_color}; }} </style>",
+                unsafe_allow_html=True
+            )
+    
+    st.subheader("System Status Explorer")
     gb = GridOptionsBuilder.from_dataframe(system_summary[["SYSTEM", "STATUS", "SCORE"]])
     gb.configure_selection(selection_mode="single", use_checkbox=False)
     gb.configure_default_column(resizable=False, filter=True, sortable=True)
