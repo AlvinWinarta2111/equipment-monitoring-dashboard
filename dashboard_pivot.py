@@ -115,35 +115,63 @@ def main():
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
-    st.subheader("AREA Score Distribution")
-    fig_area = px.bar(
-        area_scores, x="AREA", y="SCORE", color=area_scores["SCORE"].astype(str), text="SCORE",
-        color_discrete_map={"3": "green", "2": "yellow", "1": "red"}, title="Lowest Score per AREA",
-        category_orders={"SCORE": ["3", "2", "1"]}
-    )
-    fig_area.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1))
-    st.plotly_chart(fig_area, use_container_width=True)
+  st.subheader("AREA Score Distribution")
+# Create the bar chart with custom colors and a text label for each bar
+fig_area = px.bar(
+    area_scores,
+    x="AREA",
+    y="SCORE",
+    color="SCORE",
+    text="SCORE",
+    color_discrete_map={"3": "green", "2": "yellow", "1": "red"},
+    title="Lowest Score per AREA",
+    category_orders={"SCORE": ["3", "2", "1"]}
+)
 
-    st.subheader("Equipment Status Distribution per AREA")
-    latest_for_pie = df_filtered_by_date.sort_values("DATE").groupby("EQUIPMENT DESCRIPTION", as_index=False).last()
-    area_dist = latest_for_pie.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
-    areas = sorted(area_dist["AREA"].unique())
-    cols_per_row = 3
-    for i in range(0, len(areas), cols_per_row):
-        cols = st.columns(cols_per_row)
-        for j, area in enumerate(areas[i:i + cols_per_row]):
-            if j < len(cols):
-                with cols[j]:
-                    st.markdown(f"**{area}**")
-                    area_data = area_dist[area_dist["AREA"] == area]
-                    fig_pie = px.pie(
-                        area_data, names="EQUIP_STATUS", values="COUNT", color="EQUIP_STATUS",
-                        color_discrete_map={"Need Action": "red", "Caution": "yellow", "Okay": "green"}, hole=0.4,
-                        category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
-                    )
-                    fig_pie.update_traces(textinfo='percent+value', textfont_size=16)
-                    fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
-                    st.plotly_chart(fig_pie, use_container_width=True)
+# Update the y-axis title and range in a single, chained line
+fig_area.update_layout(yaxis={"title": "Score", "range": [0, 3.5], "dtick": 1})
+
+# Display the chart
+st.plotly_chart(fig_area, use_container_width=True)    
+
+st.subheader("Equipment Status Distribution per AREA")
+
+# Consolidate data preparation into a single line using method chaining
+area_dist = (
+    df_filtered_by_date.sort_values("DATE")
+    .groupby("EQUIPMENT DESCRIPTION", as_index=False)
+    .last()
+    .groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"]
+    .count()
+    .reset_index(name="COUNT")
+)
+
+# Function to create and display a single pie chart
+def create_pie_chart(data, area_name, col):
+    with col:
+        st.markdown(f"**{area_name}**")
+        fig_pie = px.pie(
+            data,
+            names="EQUIP_STATUS",
+            values="COUNT",
+            color="EQUIP_STATUS",
+            color_discrete_map={"Need Action": "red", "Caution": "yellow", "Okay": "green"},
+            hole=0.4,
+            category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
+        )
+        fig_pie.update_traces(textinfo='percent+value', textfont_size=16)
+        fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+# Create and display pie charts in columns
+areas = sorted(area_dist["AREA"].unique())
+cols_per_row = 3
+cols = st.columns(cols_per_row)
+
+for i, area in enumerate(areas):
+    col_index = i % cols_per_row
+    area_data = area_dist[area_dist["AREA"] == area]
+    create_pie_chart(area_data, area, cols[col_index])
 
     st.subheader("SYSTEM Score Distribution")
     fig_system = px.bar(
