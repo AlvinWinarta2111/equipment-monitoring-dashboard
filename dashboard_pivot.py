@@ -172,7 +172,8 @@ def main():
     longest_time_not_checked["DATE"] = longest_time_not_checked["DATE"].dt.strftime("%Y-%m-%d")
     longest_time_not_checked = longest_time_not_checked[["DATE", "EQUIPMENT DESCRIPTION", "SYSTEM"]]
     longest_time_not_checked = longest_time_not_checked.rename(columns={"DATE": "Date (oldest to latest)", "EQUIPMENT DESCRIPTION": "Equipment Name", "SYSTEM": "System"})
-    st.dataframe(longest_time_not_checked.head(5), use_container_width=True, hide_index=True)
+    # Set a fixed height to show ~5 rows and enable scrolling for the rest
+    st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True, height=210)
 
     st.subheader("System Status Explorer")
     # Also use df_latest_status for the main explorer table
