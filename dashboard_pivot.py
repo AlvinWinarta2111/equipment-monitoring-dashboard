@@ -208,6 +208,9 @@ def main():
         # The detail_df logic was already correct, but we'll use df_latest_status for consistency
         detail_df = df_latest_status[df_latest_status["SYSTEM"] == selected_system].copy()
         
+        # Format the DATE column to remove the time part
+        detail_df['DATE'] = detail_df['DATE'].dt.strftime('%d/%m/%Y')
+        
         # Define the ideal list of columns we want to show
         desired_display_cols = ["EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS", "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"]
         
