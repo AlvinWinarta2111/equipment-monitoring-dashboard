@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode, GridUpdateMode
-from streamlit_plotly_events import plotly_events
 import requests
 import io
 
@@ -111,8 +110,12 @@ def main():
         st.warning("No data available for the selected date range.")
         return
 
-    # Aggregation
-    system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
+    # LOGIC FIX: Create a DataFrame containing only the latest status for each piece of equipment.
+    # All summary calculations will be based on this DataFrame to ensure consistency.
+    df_latest_status = df_filtered_by_date.sort_values("DATE", ascending=False).drop_duplicates(subset="EQUIPMENT DESCRIPTION", keep="first")
+
+    # Aggregation based on the latest status
+    system_scores = df_latest_status.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
     
     # Create two columns for side-by-side charts
@@ -122,7 +125,7 @@ def main():
         st.subheader("AREA Score Distribution")
         fig_area = px.bar(
             area_scores, x="AREA", y="SCORE", color=area_scores["SCORE"].astype(str), text="SCORE",
-            color_discrete_map={"3": "green", "2": "yellow", "1": "red"}, title="Lowest Score per AREA",
+            color_discrete_map={"3": "green", "2": "yellow", "1": "red"}, title="Lowest Score per AREA (Latest Status)",
             category_orders={"SCORE": ["3", "2", "1"]}
         )
         fig_area.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1))
@@ -130,8 +133,8 @@ def main():
 
     with col_right:
         st.subheader("Equipment Status Distribution per AREA")
-        latest_for_pie = df_filtered_by_date.sort_values("DATE").groupby("EQUIPMENT DESCRIPTION", as_index=False).last()
-        area_dist = latest_for_pie.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
+        # Use df_latest_status for pie charts as well
+        area_dist = df_latest_status.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
         areas = sorted(area_dist["AREA"].unique())
         cols_per_row = 3
         for i in range(0, len(areas), cols_per_row):
@@ -153,7 +156,7 @@ def main():
     st.subheader("SYSTEM Score Distribution")
     fig_system = px.bar(
         system_scores, x="SYSTEM", y="SCORE", color=system_scores["SCORE"].astype(str), text="SCORE",
-        color_discrete_map={"3": "green", "2": "yellow", "1": "red"}, title="Lowest Score per SYSTEM",
+        color_discrete_map={"3": "green", "2": "yellow", "1": "red"}, title="Lowest Score per SYSTEM (Latest Status)",
         category_orders={"SCORE": ["3", "2", "1"]}
     )
     fig_system.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1), xaxis=dict(tickangle=-45))
@@ -163,21 +166,17 @@ def main():
     st.dataframe(area_scores.style.map(color_score, subset=["SCORE"]).hide(axis="index"))
     
     st.subheader("Equipment last checked date")
-    # Find the latest check date for each piece of equipment and its system
+    # This logic remains the same as it's intended to find the absolute last check date
     latest_check = df.groupby(["EQUIPMENT DESCRIPTION", "SYSTEM"])["DATE"].max().reset_index()
-    
-    # Sort by date from oldest to latest to find the longest time since checked
     longest_time_not_checked = latest_check.sort_values(by="DATE", ascending=True)
-
-    # Reorder columns and format the date for display
     longest_time_not_checked["DATE"] = longest_time_not_checked["DATE"].dt.strftime("%Y-%m-%d")
     longest_time_not_checked = longest_time_not_checked[["DATE", "EQUIPMENT DESCRIPTION", "SYSTEM"]]
     longest_time_not_checked = longest_time_not_checked.rename(columns={"DATE": "Date (oldest to latest)", "EQUIPMENT DESCRIPTION": "Equipment Name", "SYSTEM": "System"})
-    
     st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True)
 
     st.subheader("System Status Explorer")
-    system_summary = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
+    # Also use df_latest_status for the main explorer table
+    system_summary = df_latest_status.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
     system_summary["STATUS"] = system_summary["SCORE"].apply(map_status)
     gb = GridOptionsBuilder.from_dataframe(system_summary[["SYSTEM", "STATUS", "SCORE"]])
     gb.configure_selection(selection_mode="single", use_checkbox=False)
@@ -205,9 +204,8 @@ def main():
     if selected_system_rows:
         selected_system = selected_system_rows[0].get("SYSTEM")
         st.markdown(f"### Equipment Details for **{selected_system}** (Latest Status in Range)")
-        detail_df = df_filtered_by_date[df_filtered_by_date["SYSTEM"] == selected_system].copy()
-        detail_df = detail_df.sort_values(by="DATE", ascending=False).drop_duplicates(subset=["EQUIPMENT DESCRIPTION"], keep="first")
-        detail_df["STATUS"] = detail_df["SCORE"].apply(map_status)
+        # The detail_df logic was already correct, but we'll use df_latest_status for consistency
+        detail_df = df_latest_status[df_latest_status["SYSTEM"] == selected_system].copy()
         
         detail_display_cols = ["EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS", "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"]
         gb_details = GridOptionsBuilder.from_dataframe(detail_df[detail_display_cols])
