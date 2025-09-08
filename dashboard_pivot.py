@@ -161,6 +161,20 @@ def main():
 
     st.subheader("Area Status (Lowest Score)")
     st.dataframe(area_scores.style.map(color_score, subset=["SCORE"]).hide(axis="index"))
+    
+    st.subheader("Equipment Not Checked for Longest Time")
+    # Find the latest check date for each piece of equipment and its system
+    latest_check = df.groupby(["EQUIPMENT DESCRIPTION", "SYSTEM"])["DATE"].max().reset_index()
+    
+    # Sort by date from oldest to latest to find the longest time since checked
+    longest_time_not_checked = latest_check.sort_values(by="DATE", ascending=True)
+
+    # Reorder columns and format the date for display
+    longest_time_not_checked["DATE"] = longest_time_not_checked["DATE"].dt.strftime("%Y-%m-%d")
+    longest_time_not_checked = longest_time_not_checked[["DATE", "EQUIPMENT DESCRIPTION", "SYSTEM"]]
+    longest_time_not_checked = longest_time_not_checked.rename(columns={"DATE": "Date (oldest to latest)", "EQUIPMENT DESCRIPTION": "Equipment Name", "SYSTEM": "System"})
+    
+    st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True)
 
     st.subheader("System Status Explorer")
     system_summary = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
