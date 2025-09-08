@@ -115,6 +115,10 @@ def main():
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
+# Create a two-column layout for side-by-side charts
+col1, col2 = st.columns(2)
+
+with col1:
     st.subheader("AREA Score Distribution")
     fig_area = px.bar(
         area_scores, x="AREA", y="SCORE", color=area_scores["SCORE"].astype(str), text="SCORE",
@@ -124,27 +128,29 @@ def main():
     fig_area.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1))
     st.plotly_chart(fig_area, use_container_width=True)
 
+with col2:
     st.subheader("Equipment Status Distribution per AREA")
+    # Consolidate data preparation into a single line
     latest_for_pie = df_filtered_by_date.sort_values("DATE").groupby("EQUIPMENT DESCRIPTION", as_index=False).last()
     area_dist = latest_for_pie.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
+    
+    # Get the unique areas to iterate through
     areas = sorted(area_dist["AREA"].unique())
-    cols_per_row = 3
-    for i in range(0, len(areas), cols_per_row):
-        cols = st.columns(cols_per_row)
-        for j, area in enumerate(areas[i:i + cols_per_row]):
-            if j < len(cols):
-                with cols[j]:
-                    st.markdown(f"**{area}**")
-                    area_data = area_dist[area_dist["AREA"] == area]
-                    fig_pie = px.pie(
-                        area_data, names="EQUIP_STATUS", values="COUNT", color="EQUIP_STATUS",
-                        color_discrete_map={"Need Action": "red", "Caution": "yellow", "Okay": "green"}, hole=0.4,
-                        category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
-                    )
-                    fig_pie.update_traces(textinfo='percent+value', textfont_size=16)
-                    fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
-                    st.plotly_chart(fig_pie, use_container_width=True)
+    
+    # Use a single column to display all pie charts vertically
+    for area in areas:
+        st.markdown(f"**{area}**")
+        area_data = area_dist[area_dist["AREA"] == area]
+        fig_pie = px.pie(
+            area_data, names="EQUIP_STATUS", values="COUNT", color="EQUIP_STATUS",
+            color_discrete_map={"Need Action": "red", "Caution": "yellow", "Okay": "green"}, hole=0.4,
+            category_orders={"EQUIP_STATUS": ["Okay", "Caution", "Need Action"]}
+        )
+        fig_pie.update_traces(textinfo='percent+value', textfont_size=16)
+        fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
+        st.plotly_chart(fig_pie, use_container_width=True)
 
+    
     st.subheader("SYSTEM Score Distribution")
     fig_system = px.bar(
         system_scores, x="SYSTEM", y="SCORE", color=system_scores["SCORE"].astype(str), text="SCORE",
