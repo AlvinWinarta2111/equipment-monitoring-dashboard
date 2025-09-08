@@ -51,7 +51,7 @@ def color_status(val):
 # =========================
 def main():
     st.set_page_config(layout="wide")
-        # --- Add Logo and Title ---
+    # --- Add Logo and Title ---
     col1, col2 = st.columns([1, 10])
     with col1:
         st.image("https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/images/alamtri_logo.jpeg", width=175)
@@ -167,4 +167,50 @@ def main():
     cell_style_jscode = JsCode("""
         function(params) {
             if (params.value == 'Okay') return {'backgroundColor': 'green', 'color': 'white'};
-            if (params.value == 'Caution') return {'backgroundColor': 'yellow',
+            if (params.value == 'Caution') return {'backgroundColor': 'yellow', 'color': 'black'};
+            if (params.value == 'Need Action') return {'backgroundColor': 'red', 'color': 'white'};
+            return null;
+        }""")
+    gb.configure_column("STATUS", cellStyle=cell_style_jscode)
+    gridOptions = gb.build()
+    gridOptions['suppressMovableColumns'] = True
+    grid_response = AgGrid(
+        system_summary, gridOptions=gridOptions, enable_enterprise_modules=True,
+        update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
+        height=300, theme="streamlit", allow_unsafe_jscode=True
+    )
+
+    selected_system_rows = grid_response.get("selected_rows", [])
+    if isinstance(selected_system_rows, pd.DataFrame):
+        selected_system_rows = selected_system_rows.to_dict("records")
+
+    if selected_system_rows:
+        selected_system = selected_system_rows[0].get("SYSTEM")
+        st.markdown(f"### Equipment Details for **{selected_system}** (Latest Status in Range)")
+        detail_df = df_filtered_by_date[df_filtered_by_date["SYSTEM"] == selected_system].copy()
+        detail_df = detail_df.sort_values(by="DATE", ascending=False).drop_duplicates(subset=["EQUIPMENT DESCRIPTION"], keep="first")
+        detail_df["STATUS"] = detail_df["SCORE"].apply(map_status)
+        
+        detail_display_cols = ["EQUIPMENT DESCRIPTION", "DATE", "SCORE", "STATUS", "VIBRATION", "OIL ANALYSIS", "TEMPERATURE", "OTHER INSPECTION"]
+        gb_details = GridOptionsBuilder.from_dataframe(detail_df[detail_display_cols])
+        gb_details.configure_selection(selection_mode="single", use_checkbox=False)
+        gb_details.configure_default_column(resizable=False)
+        gb_details.configure_column("STATUS", cellStyle=cell_style_jscode)
+        gridOptions_details = gb_details.build()
+        gridOptions_details['suppressMovableColumns'] = True
+        detail_grid_response = AgGrid(
+            detail_df[detail_display_cols], gridOptions=gridOptions_details, enable_enterprise_modules=True,
+            update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
+            height=300, theme="streamlit", allow_unsafe_jscode=True
+        )
+
+        selected_equipment_rows = detail_grid_response.get("selected_rows", [])
+        if isinstance(selected_equipment_rows, pd.DataFrame):
+            selected_equipment_rows = selected_equipment_rows.to_dict("records")
+        
+        if selected_equipment_rows:
+            selected_equip_name = selected_equipment_rows[0].get('EQUIPMENT DESCRIPTION')
+            
+            st.markdown(f"#### Details for: **{selected_equip_name}**")
+            selected_equip_full_details = detail_df[detail_df['EQUIPMENT DESCRIPTION'] == selected_equip_name].iloc[0]
+            action_data = [{"EQUIPMENT DESCRIPTION": selected_equip_full_details.get("EQUIPMENT DESCRIPTION"), "REPORTED BY": selected_equip_full_details.get("REPORTED BY"), "FINDING": selected_equip_full_details.get("FINDING"), "ACTION PLAN": selected_equip_full_details.get("ACTION
