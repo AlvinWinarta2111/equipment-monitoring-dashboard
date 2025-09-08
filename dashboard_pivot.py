@@ -177,43 +177,39 @@ def main():
     st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True)
 
     # Calculate status percentages for the System Status Explorer table
-    system_summary = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
-    system_summary["STATUS"] = system_summary["SCORE"].apply(map_status)
-    status_counts = system_summary["STATUS"].value_counts().reset_index()
-    status_counts.columns = ["STATUS", "COUNT"]
-    total_systems = status_counts["COUNT"].sum()
-    status_counts["PERCENTAGE"] = (status_counts["COUNT"] / total_systems * 100).round(1)
-    
-    # Sort for consistent display order
-    status_counts["STATUS"] = pd.Categorical(status_counts["STATUS"], categories=["Okay", "Caution", "Need Action"], ordered=True)
-    status_counts = status_counts.sort_values("STATUS")
-    
+    latest_equipment_status = df_filtered_by_date.sort_values("DATE").groupby(["EQUIPMENT DESCRIPTION", "SYSTEM"])["EQUIP_STATUS"].last().reset_index()
+    system_status_counts = latest_equipment_status.groupby(["SYSTEM", "EQUIP_STATUS"]).size().unstack(fill_value=0)
+    system_status_counts["Total"] = system_status_counts.sum(axis=1)
+
+    for status in ["Okay", "Caution", "Need Action"]:
+        if status in system_status_counts.columns:
+            system_status_counts[f"{status} (%)"] = (system_status_counts[status] / system_status_counts["Total"] * 100).round(1)
+        else:
+            system_status_counts[f"{status} (%)"] = 0.0
+
+    system_summary = system_status_counts.reset_index()
+    system_summary = system_summary.rename(columns={"Okay": "Okay Count", "Caution": "Caution Count", "Need Action": "Need Action Count"})
+    system_summary["Lowest Score"] = df_filtered_by_date.groupby("SYSTEM")["SCORE"].min().reset_index()["SCORE"]
+
     st.subheader("Overall System Status Distribution")
     cols_status = st.columns(3)
     # Display each metric with a color-coded value
-    for idx, row in status_counts.iterrows():
-        status_color = ""
-        if row["STATUS"] == "Okay":
-            status_color = "#34A853"  # Green
-        elif row["STATUS"] == "Caution":
-            status_color = "#FBBC04"  # Yellow
-        else:
-            status_color = "#EA4335"  # Red
-        
-        with cols_status[idx]:
-            st.metric(
-                label=row["STATUS"],
-                value=f"{row['PERCENTAGE']}%",
-                delta=f"{row['COUNT']} systems"
-            )
-            # Use a little bit of markdown to apply color directly to the value
-            st.markdown(
-                f"<style> .st-emotion-cache-121p6f9 {{ color: {status_color}; }} </style>",
-                unsafe_allow_html=True
-            )
+    total_systems_count = df_filtered_by_date.groupby("SYSTEM").ngroups
     
+    overall_status_counts = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"})
+    overall_status_counts["STATUS"] = overall_status_counts["SCORE"].apply(map_status)
+    overall_status_percentages = overall_status_counts["STATUS"].value_counts(normalize=True).mul(100).round(1).reindex(["Okay", "Caution", "Need Action"], fill_value=0)
+    
+    with cols_status[0]:
+        st.metric(label="Okay", value=f"{overall_status_percentages['Okay']}%", delta=f"{overall_status_counts['STATUS'].value_counts().get('Okay', 0)} systems")
+    with cols_status[1]:
+        st.metric(label="Caution", value=f"{overall_status_percentages['Caution']}%", delta=f"{overall_status_counts['STATUS'].value_counts().get('Caution', 0)} systems")
+    with cols_status[2]:
+        st.metric(label="Need Action", value=f"{overall_status_percentages['Need Action']}%", delta=f"{overall_status_counts['STATUS'].value_counts().get('Need Action', 0)} systems")
+
     st.subheader("System Status Explorer")
-    gb = GridOptionsBuilder.from_dataframe(system_summary[["SYSTEM", "STATUS", "SCORE"]])
+    display_cols = ["SYSTEM", "Lowest Score", "Okay (%)", "Caution (%)", "Need Action (%)"]
+    gb = GridOptionsBuilder.from_dataframe(system_summary[display_cols])
     gb.configure_selection(selection_mode="single", use_checkbox=False)
     gb.configure_default_column(resizable=False, filter=True, sortable=True)
     cell_style_jscode = JsCode("""
@@ -224,10 +220,11 @@ def main():
             return null;
         }""")
     gb.configure_column("STATUS", cellStyle=cell_style_jscode)
+    
     gridOptions = gb.build()
     gridOptions['suppressMovableColumns'] = True
     grid_response = AgGrid(
-        system_summary, gridOptions=gridOptions, enable_enterprise_modules=True,
+        system_summary[display_cols], gridOptions=gridOptions, enable_enterprise_modules=True,
         update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
         height=300, theme="streamlit", allow_unsafe_jscode=True
     )
