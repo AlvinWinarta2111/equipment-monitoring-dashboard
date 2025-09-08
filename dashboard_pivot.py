@@ -191,22 +191,6 @@ def main():
     system_summary = system_summary.rename(columns={"Okay": "Okay Count", "Caution": "Caution Count", "Need Action": "Need Action Count"})
     system_summary["Lowest Score"] = df_filtered_by_date.groupby("SYSTEM")["SCORE"].min().reset_index()["SCORE"]
 
-    st.subheader("Overall System Status Distribution")
-    cols_status = st.columns(3)
-    # Display each metric with a color-coded value
-    total_systems_count = df_filtered_by_date.groupby("SYSTEM").ngroups
-    
-    overall_status_counts = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"})
-    overall_status_counts["STATUS"] = overall_status_counts["SCORE"].apply(map_status)
-    overall_status_percentages = overall_status_counts["STATUS"].value_counts(normalize=True).mul(100).round(1).reindex(["Okay", "Caution", "Need Action"], fill_value=0)
-    
-    with cols_status[0]:
-        st.metric(label="Okay", value=f"{overall_status_percentages['Okay']}%", delta=f"{overall_status_counts['STATUS'].value_counts().get('Okay', 0)} systems")
-    with cols_status[1]:
-        st.metric(label="Caution", value=f"{overall_status_percentages['Caution']}%", delta=f"{overall_status_counts['STATUS'].value_counts().get('Caution', 0)} systems")
-    with cols_status[2]:
-        st.metric(label="Need Action", value=f"{overall_status_percentages['Need Action']}%", delta=f"{overall_status_counts['STATUS'].value_counts().get('Need Action', 0)} systems")
-
     st.subheader("System Status Explorer")
     display_cols = ["SYSTEM", "Lowest Score", "Okay (%)", "Caution (%)", "Need Action (%)"]
     gb = GridOptionsBuilder.from_dataframe(system_summary[display_cols])
