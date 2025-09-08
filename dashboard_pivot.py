@@ -177,40 +177,23 @@ def main():
     st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True)
 
     st.subheader("System Status Explorer")
-    # Calculate percentages for each system's equipment status
-    latest_equipment_status = df_filtered_by_date.sort_values("DATE").groupby(["EQUIPMENT DESCRIPTION", "SYSTEM"])["EQUIP_STATUS"].last().reset_index()
-    system_status_counts = latest_equipment_status.groupby("SYSTEM")["EQUIP_STATUS"].value_counts().unstack(fill_value=0)
-    system_status_counts["Total"] = system_status_counts.sum(axis=1)
-
-    if "Okay" in system_status_counts.columns:
-        system_status_counts["Okay (%)"] = (system_status_counts["Okay"] / system_status_counts["Total"] * 100).round(1)
-    else:
-        system_status_counts["Okay (%)"] = 0.0
-
-    # Add lowest score to the DataFrame
-    system_summary = system_status_counts.reset_index()
-    system_summary["Lowest Score"] = df_filtered_by_date.groupby("SYSTEM")["SCORE"].min().reset_index()["SCORE"]
-
-    # Configure AgGrid to display the new columns
-    display_cols = ["SYSTEM", "Lowest Score", "Okay (%)"]
-    gb = GridOptionsBuilder.from_dataframe(system_summary[display_cols])
+    system_summary = df_filtered_by_date.groupby("SYSTEM").agg({"SCORE": "min"}).reset_index()
+    system_summary["STATUS"] = system_summary["SCORE"].apply(map_status)
+    gb = GridOptionsBuilder.from_dataframe(system_summary[["SYSTEM", "STATUS", "SCORE"]])
     gb.configure_selection(selection_mode="single", use_checkbox=False)
     gb.configure_default_column(resizable=False, filter=True, sortable=True)
-
-    # Apply color coding to the "Lowest Score" column
     cell_style_jscode = JsCode("""
         function(params) {
-            if (params.value === 1) return {'backgroundColor': 'red', 'color': 'white'};
-            if (params.value === 2) return {'backgroundColor': 'yellow', 'color': 'black'};
-            if (params.value === 3) return {'backgroundColor': 'green', 'color': 'white'};
+            if (params.value == 'Okay') return {'backgroundColor': 'green', 'color': 'white'};
+            if (params.value == 'Caution') return {'backgroundColor': 'yellow', 'color': 'black'};
+            if (params.value == 'Need Action') return {'backgroundColor': 'red', 'color': 'white'};
             return null;
         }""")
-    gb.configure_column("Lowest Score", cellStyle=cell_style_jscode)
-    
+    gb.configure_column("STATUS", cellStyle=cell_style_jscode)
     gridOptions = gb.build()
     gridOptions['suppressMovableColumns'] = True
     grid_response = AgGrid(
-        system_summary[display_cols], gridOptions=gridOptions, enable_enterprise_modules=True,
+        system_summary, gridOptions=gridOptions, enable_enterprise_modules=True,
         update_mode=GridUpdateMode.SELECTION_CHANGED, fit_columns_on_grid_load=True,
         height=300, theme="streamlit", allow_unsafe_jscode=True
     )
@@ -259,7 +242,7 @@ def main():
             # --- Performance Trend ---
             st.subheader(f"Performance Trend for {selected_equip_name}")
             
-            df_equip = df_filtered_by_date[df_filtered_by_date["SYSTEM"] == selected_system].copy()
+            df_equip = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
             if not df_equip.empty:
                 idx = df_equip.groupby('DATE')['SCORE'].idxmin()
                 aggregated_df = df_equip.loc[idx].reset_index(drop=True)
