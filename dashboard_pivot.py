@@ -162,7 +162,7 @@ def main():
     st.subheader("Area Status (Lowest Score)")
     st.dataframe(area_scores.style.map(color_score, subset=["SCORE"]).hide(axis="index"))
     
-    st.subheader("Equipment Not Checked for Longest Time")
+    st.subheader("Equipment last checked date")
     # Find the latest check date for each piece of equipment and its system
     latest_check = df.groupby(["EQUIPMENT DESCRIPTION", "SYSTEM"])["DATE"].max().reset_index()
     
