@@ -41,7 +41,6 @@ def color_status(val):
     if val == "Need Action":
         return "background-color: red; color: white;"
     elif val == "Caution":
-        return "background-color: yellow; color: black;"
     elif val =="Okay":
         return "background-color: green; color: white;"
     return ""
@@ -176,34 +175,36 @@ def main():
     
     st.dataframe(longest_time_not_checked, use_container_width=True, hide_index=True)
 
-    # Calculate status percentages for the System Status Explorer table
+    st.subheader("System Status Explorer")
+    # Calculate percentages for each system's equipment status
     latest_equipment_status = df_filtered_by_date.sort_values("DATE").groupby(["EQUIPMENT DESCRIPTION", "SYSTEM"])["EQUIP_STATUS"].last().reset_index()
-    system_status_counts = latest_equipment_status.groupby(["SYSTEM", "EQUIP_STATUS"]).size().unstack(fill_value=0)
+    system_status_counts = latest_equipment_status.groupby("SYSTEM")["EQUIP_STATUS"].value_counts().unstack(fill_value=0)
     system_status_counts["Total"] = system_status_counts.sum(axis=1)
 
-    for status in ["Okay", "Caution", "Need Action"]:
-        if status in system_status_counts.columns:
-            system_status_counts[f"{status} (%)"] = (system_status_counts[status] / system_status_counts["Total"] * 100).round(1)
-        else:
-            system_status_counts[f"{status} (%)"] = 0.0
+    if "Okay" in system_status_counts.columns:
+        system_status_counts["Okay (%)"] = (system_status_counts["Okay"] / system_status_counts["Total"] * 100).round(1)
+    else:
+        system_status_counts["Okay (%)"] = 0.0
 
+    # Add lowest score to the DataFrame
     system_summary = system_status_counts.reset_index()
-    system_summary = system_summary.rename(columns={"Okay": "Okay Count", "Caution": "Caution Count", "Need Action": "Need Action Count"})
     system_summary["Lowest Score"] = df_filtered_by_date.groupby("SYSTEM")["SCORE"].min().reset_index()["SCORE"]
 
-    st.subheader("System Status Explorer")
-    display_cols = ["SYSTEM", "Lowest Score", "Okay (%)", "Caution (%)", "Need Action (%)"]
+    # Configure AgGrid to display the new columns
+    display_cols = ["SYSTEM", "Lowest Score", "Okay (%)"]
     gb = GridOptionsBuilder.from_dataframe(system_summary[display_cols])
     gb.configure_selection(selection_mode="single", use_checkbox=False)
     gb.configure_default_column(resizable=False, filter=True, sortable=True)
+
+    # Apply color coding to the "Lowest Score" column
     cell_style_jscode = JsCode("""
         function(params) {
-            if (params.value == 'Okay') return {'backgroundColor': 'green', 'color': 'white'};
-            if (params.value == 'Caution') return {'backgroundColor': 'yellow', 'color': 'black'};
-            if (params.value == 'Need Action') return {'backgroundColor': 'red', 'color': 'white'};
+            if (params.value === 1) return {'backgroundColor': 'red', 'color': 'white'};
+            if (params.value === 2) return {'backgroundColor': 'yellow', 'color': 'black'};
+            if (params.value === 3) return {'backgroundColor': 'green', 'color': 'white'};
             return null;
         }""")
-    gb.configure_column("STATUS", cellStyle=cell_style_jscode)
+    gb.configure_column("Lowest Score", cellStyle=cell_style_jscode)
     
     gridOptions = gb.build()
     gridOptions['suppressMovableColumns'] = True
@@ -257,7 +258,7 @@ def main():
             # --- Performance Trend ---
             st.subheader(f"Performance Trend for {selected_equip_name}")
             
-            df_equip = df_filtered_by_date[df_filtered_by_date["EQUIPMENT DESCRIPTION"] == selected_equip_name].copy()
+            df_equip = df_filtered_by_date[df_filtered_by_date["SYSTEM"] == selected_system].copy()
             if not df_equip.empty:
                 idx = df_equip.groupby('DATE')['SCORE'].idxmin()
                 aggregated_df = df_equip.loc[idx].reset_index(drop=True)
