@@ -41,6 +41,7 @@ def color_status(val):
     if val == "Need Action":
         return "background-color: red; color: white;"
     elif val == "Caution":
+        return "background-color: yellow; color: black;"
     elif val =="Okay":
         return "background-color: green; color: white;"
     return ""
