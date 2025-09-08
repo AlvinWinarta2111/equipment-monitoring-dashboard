@@ -115,9 +115,6 @@ def main():
     system_scores = df_filtered_by_date.groupby(["AREA", "SYSTEM"])["SCORE"].min().reset_index()
     area_scores = system_scores.groupby("AREA")["SCORE"].min().reset_index()
 
-    col1, col2 = st.columns(2)
-
-    with col1:
     st.subheader("AREA Score Distribution")
     fig_area = px.bar(
         area_scores, x="AREA", y="SCORE", color=area_scores["SCORE"].astype(str), text="SCORE",
@@ -127,7 +124,6 @@ def main():
     fig_area.update_layout(yaxis=dict(title="Score", range=[0, 3.5], dtick=1))
     st.plotly_chart(fig_area, use_container_width=True)
 
-    with col2:
     st.subheader("Equipment Status Distribution per AREA")
     latest_for_pie = df_filtered_by_date.sort_values("DATE").groupby("EQUIPMENT DESCRIPTION", as_index=False).last()
     area_dist = latest_for_pie.groupby(["AREA", "EQUIP_STATUS"])["EQUIPMENT DESCRIPTION"].count().reset_index(name="COUNT")
@@ -148,7 +144,6 @@ def main():
                     fig_pie.update_traces(textinfo='percent+value', textfont_size=16)
                     fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
                     st.plotly_chart(fig_pie, use_container_width=True)
-    
 
     st.subheader("SYSTEM Score Distribution")
     fig_system = px.bar(
@@ -289,3 +284,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
