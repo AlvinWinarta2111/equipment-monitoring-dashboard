@@ -61,7 +61,7 @@ def main():
     if 'clicked_trend_point' not in st.session_state:
         st.session_state.clicked_trend_point = None
 
-    RAW_FILE_URL = "https://raw.githubusercontent.com/AlvinWinarta2111/equipment-monitoring-dashboard/main/data/CONDITION%20MONITORING%20SCORECARD.xlsx"
+    RAW_FILE_URL = "https://binusianorg-my.sharepoint.com/personal/matthew_gunawan001_binus_ac_id/_layouts/15/download.aspx?share=EWKHgIpBXlZIlgIy_48b7uwBB7t-vpPn7OWiqhajsEqSdg"
 
     @st.cache_data(ttl=300)
     def load_data():
